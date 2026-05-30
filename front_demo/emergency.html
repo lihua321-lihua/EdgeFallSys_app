@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>紧急干预 - EdgeFallSys</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ===== 预警概览 ===== */
+    .alert-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: var(--space-md);
+      margin-bottom: var(--space-lg);
+    }
+
+    .alert-stat {
+      background: var(--color-card);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      text-align: center;
+      box-shadow: var(--shadow-card);
+    }
+
+    .alert-stat__value {
+      font-size: var(--font-hero);
+      font-weight: var(--weight-bold);
+      line-height: 1.2;
+    }
+
+    .alert-stat__value--danger { color: var(--color-danger); }
+    .alert-stat__value--warning { color: var(--color-warning); }
+    .alert-stat__value--info { color: var(--color-info); }
+
+    .alert-stat__label {
+      font-size: var(--font-caption);
+      color: var(--color-text-secondary);
+      margin-top: 4px;
+    }
+
+    /* ===== 告警列表 ===== */
+    .alert-list {
+      margin-bottom: var(--space-lg);
+    }
+
+    .alert-item {
+      background: var(--color-card);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-card);
+      margin-bottom: var(--space-md);
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-md);
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 4px solid transparent;
+    }
+
+    .alert-item:hover {
+      box-shadow: var(--shadow-card-hover);
+    }
+
+    .alert-item--danger {
+      border-left-color: var(--color-danger);
+    }
+
+    .alert-item--warning {
+      border-left-color: var(--color-warning);
+    }
+
+    .alert-item--info {
+      border-left-color: var(--color-info);
+    }
+
+    .alert-item__icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 18px;
+    }
+
+    .alert-item--danger .alert-item__icon {
+      background: var(--color-danger-light);
+    }
+
+    .alert-item--warning .alert-item__icon {
+      background: var(--color-warning-light);
+    }
+
+    .alert-item--info .alert-item__icon {
+      background: var(--color-info-light);
+    }
+
+    .alert-item__body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .alert-item__title {
+      font-size: var(--font-body);
+      font-weight: var(--weight-semibold);
+      color: var(--color-text);
+      margin-bottom: 2px;
+    }
+
+    .alert-item__desc {
+      font-size: var(--font-caption);
+      color: var(--color-text-secondary);
+    }
+
+    .alert-item__time {
+      font-size: var(--font-caption);
+      color: var(--color-text-secondary);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* ===== 跌倒诊断专区 ===== */
+    .fall-diagnosis {
+      margin-bottom: var(--space-lg);
+    }
+
+    .fall-diagnosis__card {
+      background: var(--color-card);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+    }
+
+    .fall-diagnosis__header {
+      background: var(--color-danger);
+      color: var(--color-text-white);
+      padding: var(--space-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .fall-diagnosis__header-icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: pulse-danger 1.5s infinite;
+    }
+
+    .fall-diagnosis__header-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .fall-diagnosis__header-title {
+      font-size: var(--font-title-sm);
+      font-weight: var(--weight-bold);
+    }
+
+    .fall-diagnosis__header-subtitle {
+      font-size: var(--font-caption);
+      opacity: 0.9;
+    }
+
+    .fall-diagnosis__body {
+      padding: var(--space-lg);
+    }
+
+    .fall-diagnosis__section {
+      margin-bottom: var(--space-lg);
+    }
+
+    .fall-diagnosis__section:last-child {
+      margin-bottom: 0;
+    }
+
+    .fall-diagnosis__section-title {
+      font-size: var(--font-body);
+      font-weight: var(--weight-semibold);
+      color: var(--color-text);
+      margin-bottom: var(--space-sm);
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+
+    .fall-diagnosis__section-title::before {
+      content: "";
+      width: 3px;
+      height: 16px;
+      background: var(--color-danger);
+      border-radius: 2px;
+    }
+
+    /* 姿态示意图 */
+    .fall-posture {
+      width: 100%;
+      height: 160px;
+      background: var(--color-danger-light);
+      border-radius: var(--radius-btn);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: var(--space-md);
+      position: relative;
+    }
+
+    .fall-posture__figure {
+      font-size: 48px;
+      opacity: 0.6;
+    }
+
+    .fall-posture__label {
+      position: absolute;
+      bottom: var(--space-sm);
+      right: var(--space-md);
+      font-size: var(--font-caption);
+      color: var(--color-danger);
+      font-weight: var(--weight-semibold);
+    }
+
+    /* 损伤部位标签 */
+    .injury-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+    }
+
+    .injury-tag {
+      padding: 6px 14px;
+      background: var(--color-danger-light);
+      color: var(--color-danger);
+      border-radius: var(--radius-pill);
+      font-size: var(--font-caption);
+      font-weight: var(--weight-semibold);
+    }
+
+    /* 急救指引步骤 */
+    .first-aid-steps {
+      counter-reset: step;
+    }
+
+    .first-aid-step {
+      display: flex;
+      gap: var(--space-md);
+      padding: var(--space-md) 0;
+      border-bottom: 1px solid var(--color-divider);
+    }
+
+    .first-aid-step:last-child {
+      border-bottom: none;
+    }
+
+    .first-aid-step__num {
+      width: 24px;
+      height: 24px;
+      background: var(--color-danger);
+      color: var(--color-text-white);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: var(--font-caption);
+      font-weight: var(--weight-bold);
+      flex-shrink: 0;
+    }
+
+    .first-aid-step__text {
+      font-size: var(--font-body);
+      color: var(--color-text);
+      line-height: 1.6;
+    }
+
+    /* ===== 防骗拦截站 ===== */
+    .scam-card {
+      background: var(--color-card);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-card);
+      margin-bottom: var(--space-md);
+    }
+
+    .scam-card__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-md);
+    }
+
+    .scam-card__title {
+      font-size: var(--font-body);
+      font-weight: var(--weight-semibold);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .scam-summary {
+      background: var(--color-warning-light);
+      border-radius: var(--radius-btn);
+      padding: var(--space-md);
+      margin-bottom: var(--space-md);
+      font-size: var(--font-body);
+      color: #E65100;
+      line-height: 1.6;
+    }
+
+    .scam-keywords {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+    }
+
+    .scam-keyword {
+      padding: 4px 10px;
+      background: var(--color-warning-light);
+      color: var(--color-warning);
+      border-radius: var(--radius-pill);
+      font-size: var(--font-caption);
+      font-weight: var(--weight-semibold);
+    }
+
+    /* ===== 三级梯度呼叫 ===== */
+    .call-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+      margin-bottom: var(--space-lg);
+    }
+
+    .call-btn {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-lg);
+      border-radius: var(--radius-card);
+      font-size: var(--font-title-sm);
+      font-weight: var(--weight-bold);
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .call-btn:active {
+      transform: scale(0.96);
+    }
+
+    .call-btn--120 {
+      background: var(--color-danger);
+      color: var(--color-text-white);
+    }
+
+    .call-btn--doctor {
+      background: var(--color-warning);
+      color: var(--color-text-white);
+    }
+
+    .call-btn--community {
+      background: var(--color-primary);
+      color: var(--color-text-white);
+    }
+
+    .call-btn__icon {
+      width: 44px;
+      height: 44px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .call-btn__icon svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .call-btn__info {
+      flex: 1;
+    }
+
+    .call-btn__label {
+      font-size: var(--font-caption);
+      opacity: 0.9;
+      font-weight: var(--weight-regular);
+    }
+
+    /* ===== 多模态视频窗 ===== */
+    .video-card {
+      background: var(--color-card);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      margin-bottom: var(--space-md);
+    }
+
+    .video-card__preview {
+      width: 100%;
+      height: 200px;
+      background: #1A1A2E;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: pointer;
+    }
+
+    .video-card__play {
+      width: 56px;
+      height: 56px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(4px);
+      transition: transform 0.2s;
+    }
+
+    .video-card__play:hover {
+      transform: scale(1.1);
+    }
+
+    .video-card__play svg {
+      width: 28px;
+      height: 28px;
+      fill: white;
+    }
+
+    .video-card__badge {
+      position: absolute;
+      top: var(--space-sm);
+      right: var(--space-sm);
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      padding: 4px 8px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+    }
+
+    .video-card__info {
+      padding: var(--space-md) var(--space-lg);
+    }
+
+    .video-card__title {
+      font-size: var(--font-body);
+      font-weight: var(--weight-semibold);
+    }
+
+    .video-card__meta {
+      font-size: var(--font-caption);
+      color: var(--color-text-secondary);
+      margin-top: 2px;
+    }
+
+    /* ===== 处理状态 ===== */
+    .handling-status {
+      background: var(--color-info-light);
+      border-radius: var(--radius-card);
+      padding: var(--space-md) var(--space-lg);
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-md);
+    }
+
+    .handling-status__dot {
+      width: 8px;
+      height: 8px;
+      background: var(--color-info);
+      border-radius: 50%;
+      animation: blink 1s infinite;
+    }
+
+    .handling-status__text {
+      font-size: var(--font-body);
+      color: #1565C0;
+      font-weight: var(--weight-semibold);
+    }
+
+    /* ===== 全屏预警 ===== */
+    .emergency-overlay__title {
+      font-size: 28px;
+      font-weight: var(--weight-bold);
+      text-align: center;
+      margin-bottom: var(--space-sm);
+    }
+
+    .emergency-overlay__subtitle {
+      font-size: var(--font-body);
+      text-align: center;
+      opacity: 0.9;
+      margin-bottom: var(--space-xl);
+    }
+
+    .emergency-overlay__section {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-md);
+    }
+
+    .emergency-overlay__section-title {
+      font-size: var(--font-body);
+      font-weight: var(--weight-bold);
+      margin-bottom: var(--space-sm);
+    }
+
+    .emergency-overlay__close {
+      position: absolute;
+      top: var(--space-lg);
+      right: var(--space-lg);
+      width: 36px;
+      height: 36px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .emergency-overlay__close svg {
+      width: 20px;
+      height: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 顶部导航栏 -->
+  <header class="header">
+    <h1 class="header__title">紧急干预</h1>
+    <div class="header__actions">
+      <button class="header__btn" title="历史记录">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </button>
+      <button class="header__btn header__badge" title="通知">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="page">
+
+    <!-- 预警统计 -->
+    <section class="alert-stats animate-slide-up">
+      <div class="alert-stat">
+        <div class="alert-stat__value alert-stat__value--danger">1</div>
+        <div class="alert-stat__label">紧急告警</div>
+      </div>
+      <div class="alert-stat">
+        <div class="alert-stat__value alert-stat__value--warning">2</div>
+        <div class="alert-stat__label">风险提醒</div>
+      </div>
+      <div class="alert-stat">
+        <div class="alert-stat__value alert-stat__value--info">3</div>
+        <div class="alert-stat__label">一般通知</div>
+      </div>
+    </section>
+
+    <!-- 家庭共享处理状态 -->
+    <div class="handling-status animate-slide-up">
+      <span class="handling-status__dot"></span>
+      <span class="handling-status__text">二哥正在处理跌倒告警</span>
+    </div>
+
+    <!-- 告警列表 -->
+    <section class="alert-list animate-slide-up">
+      <div class="alert-item alert-item--danger" onclick="showEmergencyOverlay()">
+        <div class="alert-item__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#E53935" stroke-width="2" width="20" height="20" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        </div>
+        <div class="alert-item__body">
+          <div class="alert-item__title">跌倒检测告警</div>
+          <div class="alert-item__desc">客厅区域检测到跌倒，AI正在分析伤情...</div>
+        </div>
+        <div class="alert-item__time">2分钟前</div>
+      </div>
+
+      <div class="alert-item alert-item--warning">
+        <div class="alert-item__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#FF9800" stroke-width="2" width="20" height="20" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/>
+            <line x1="1" y1="1" x2="23" y2="23"/>
+          </svg>
+        </div>
+        <div class="alert-item__body">
+          <div class="alert-item__title">疑似诈骗通话拦截</div>
+          <div class="alert-item__desc">检测到关键词"转账"，通话已自动拦截</div>
+        </div>
+        <div class="alert-item__time">35分钟前</div>
+      </div>
+
+      <div class="alert-item alert-item--warning">
+        <div class="alert-item__icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#FF9800" stroke-width="2" width="20" height="20" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="6" width="22" height="12" rx="2" ry="2"/>
+            <line x1="23" y1="13" x2="23" y2="11"/>
+          </svg>
+        </div>
+        <div class="alert-item__body">
+          <div class="alert-item__title">手环电量低</div>
+          <div class="alert-item__desc">手环电量仅剩15%，请提醒父亲充电</div>
+        </div>
+        <div class="alert-item__time">1小时前</div>
+      </div>
+    </section>
+
+    <!-- 跌倒诊断专区 -->
+    <section class="fall-diagnosis animate-slide-up">
+      <div class="card__title" style="margin-bottom: var(--space-md);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        跌倒诊断专区
+      </div>
+
+      <div class="fall-diagnosis__card">
+        <div class="fall-diagnosis__header">
+          <div class="fall-diagnosis__header-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+          <div>
+            <div class="fall-diagnosis__header-title">跌倒告警</div>
+            <div class="fall-diagnosis__header-subtitle">今日 14:28 · 客厅区域</div>
+          </div>
+        </div>
+
+        <div class="fall-diagnosis__body">
+          <!-- 着地姿态 -->
+          <div class="fall-diagnosis__section">
+            <div class="fall-diagnosis__section-title">AI 伤情报告 · 着地姿态</div>
+            <div class="fall-posture">
+              <div class="fall-posture__figure">🧍‍♂️→⬇️</div>
+              <div class="fall-posture__label">向前侧倾倒</div>
+            </div>
+          </div>
+
+          <!-- 疑似损伤部位 -->
+          <div class="fall-diagnosis__section">
+            <div class="fall-diagnosis__section-title">疑似损伤部位</div>
+            <div class="injury-tags">
+              <span class="injury-tag">右侧髋关节</span>
+              <span class="injury-tag">右手腕</span>
+              <span class="injury-tag">右侧膝盖</span>
+            </div>
+          </div>
+
+          <!-- 急救指引 -->
+          <div class="fall-diagnosis__section">
+            <div class="fall-diagnosis__section-title">标准急救指引</div>
+            <div class="first-aid-steps">
+              <div class="first-aid-step">
+                <div class="first-aid-step__num">1</div>
+                <div class="first-aid-step__text">不要急于搬动老人，先询问其意识和疼痛部位</div>
+              </div>
+              <div class="first-aid-step">
+                <div class="first-aid-step__num">2</div>
+                <div class="first-aid-step__text">如老人意识清醒，检查是否有骨折迹象（肿胀、变形）</div>
+              </div>
+              <div class="first-aid-step">
+                <div class="first-aid-step__num">3</div>
+                <div class="first-aid-step__text">疑似髋关节损伤，切勿让老人站立或行走</div>
+              </div>
+              <div class="first-aid-step">
+                <div class="first-aid-step__num">4</div>
+                <div class="first-aid-step__text">立即拨打120或联系村医，告知跌倒姿态和疑似伤情</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 防骗拦截站 -->
+    <section class="animate-slide-up">
+      <div class="card__title" style="margin-bottom: var(--space-md);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        防骗拦截站
+      </div>
+
+      <div class="scam-card">
+        <div class="scam-card__header">
+          <div class="scam-card__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" stroke-width="2" width="16" height="16" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/>
+            </svg>
+            通话拦截记录
+          </div>
+          <span class="pill pill--success">已拦截</span>
+        </div>
+
+        <div class="scam-summary">
+          今日 13:53，来电号码 138****6729，通话时长 23秒后自动拦截。对方自称"银行客服"，要求将资金转入"安全账户"。
+        </div>
+
+        <div class="scam-keywords">
+          <span class="scam-keyword">转账</span>
+          <span class="scam-keyword">安全账户</span>
+          <span class="scam-keyword">银行客服</span>
+          <span class="scam-keyword">资金冻结</span>
+        </div>
+
+        <div class="text-sm text-secondary">
+          拦截时间：13:53:23 · VAD硬件自动识别 · 已同步推送至所有家属
+        </div>
+      </div>
+    </section>
+
+    <!-- 三级梯度呼叫 -->
+    <section class="animate-slide-up">
+      <div class="card__title" style="margin-bottom: var(--space-md);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/>
+          <path d="M1 1l22 22"/>
+        </svg>
+        快速呼叫
+      </div>
+
+      <div class="call-buttons">
+        <button class="call-btn call-btn--120">
+          <div class="call-btn__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </div>
+          <div class="call-btn__info">
+            一键呼叫 120
+            <div class="call-btn__label">紧急医疗救援</div>
+          </div>
+        </button>
+
+        <button class="call-btn call-btn--doctor">
+          <div class="call-btn__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+          </div>
+          <div class="call-btn__info">
+            联系村医 · 李医生
+            <div class="call-btn__label">距离1.2km · 138****5678</div>
+          </div>
+        </button>
+
+        <button class="call-btn call-btn--community">
+          <div class="call-btn__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <div class="call-btn__info">
+            社区网格员 · 王阿姨
+            <div class="call-btn__label">139****1234 · 5分钟内可达</div>
+          </div>
+        </button>
+      </div>
+    </section>
+
+    <!-- 多模态视频窗 -->
+    <section class="animate-slide-up">
+      <div class="card__title" style="margin-bottom: var(--space-md);">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <polygon points="23 7 16 12 23 17 23 7"/>
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+        </svg>
+        现场视频
+      </div>
+
+      <div class="video-card">
+        <div class="video-card__preview">
+          <div class="video-card__play">
+            <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div class="video-card__badge">隐私保护模式</div>
+        </div>
+        <div class="video-card__info">
+          <div class="video-card__title">客厅关键帧截图</div>
+          <div class="video-card__meta">14:28:15 · 萤石摄像头 · 已做隐私处理</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 全屏红色预警（默认隐藏） -->
+  <div class="emergency-overlay" id="emergencyOverlay">
+    <div class="emergency-overlay__close" onclick="hideEmergencyOverlay()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </svg>
+    </div>
+
+    <div class="animate-pulse" style="text-align:center;margin-bottom:24px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="64" height="64" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+    </div>
+
+    <div class="emergency-overlay__title">跌倒告警</div>
+    <div class="emergency-overlay__subtitle">客厅区域 · 今日 14:28</div>
+
+    <div class="emergency-overlay__section">
+      <div class="emergency-overlay__section-title">疑似损伤部位</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:20px;font-size:13px;">右侧髋关节</span>
+        <span style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:20px;font-size:13px;">右手腕</span>
+        <span style="background:rgba(255,255,255,0.2);padding:4px 12px;border-radius:20px;font-size:13px;">右侧膝盖</span>
+      </div>
+    </div>
+
+    <div class="emergency-overlay__section">
+      <div class="emergency-overlay__section-title">急救指引</div>
+      <div style="font-size:14px;line-height:1.8;opacity:0.9;">
+        1. 不要急于搬动老人<br>
+        2. 检查意识和疼痛部位<br>
+        3. 疑似髋关节损伤，切勿站立<br>
+        4. 立即拨打120
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;margin-top:24px;">
+      <button class="btn btn--danger btn--lg btn--block">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+        </svg>
+        一键呼叫 120
+      </button>
+      <button class="btn btn--lg btn--block" style="background:rgba(255,255,255,0.2);color:white;">
+        联系村医 · 李医生
+      </button>
+    </div>
+  </div>
+
+  <!-- 底部Tab导航 -->
+  <nav class="tab-bar">
+    <a href="index.html" class="tab-bar__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span class="tab-bar__label">守护全景</span>
+    </a>
+    <a href="emergency.html" class="tab-bar__item tab-bar__item--active">
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13" stroke="white" stroke-width="2"/>
+        <line x1="12" y1="17" x2="12.01" y2="17" stroke="white" stroke-width="2"/>
+      </svg>
+      <span class="tab-bar__label">紧急干预</span>
+    </a>
+    <a href="timemachine.html" class="tab-bar__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+      <span class="tab-bar__label">时光机</span>
+    </a>
+  </nav>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

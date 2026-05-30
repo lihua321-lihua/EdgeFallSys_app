@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>时光机 - EdgeFallSys</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    /* ===== 子Tab切换 ===== */
+    .sub-tabs {
+      display: flex;
+      background: var(--color-card);
+      border-radius: var(--radius-pill);
+      padding: 4px;
+      margin-bottom: var(--space-lg);
+      box-shadow: var(--shadow-card);
+    }
+
+    .sub-tab {
+      flex: 1;
+      padding: 10px 0;
+      text-align: center;
+      font-size: var(--font-body);
+      font-weight: var(--weight-semibold);
+      color: var(--color-text-secondary);
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .sub-tab--active {
+      background: var(--color-primary);
+      color: var(--color-text-white);
+      box-shadow: 0 2px 8px rgba(43, 125, 233, 0.3);
+    }
+
+    /* ===== 子页面容器 ===== */
+    .sub-page {
+      display: none;
+    }
+
+    .sub-page--active {
+      display: block;
+      animation: slideUp 0.4s ease-out;
+    }
+
+    /* ===== 时间范围选择器 ===== */
+    .range-selector {
+      display: flex;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-lg);
+    }
+
+    .range-btn {
+      padding: 6px 16px;
+      border-radius: var(--radius-pill);
+      font-size: var(--font-caption);
+      font-weight: var(--weight-semibold);
+      color: var(--color-text-secondary);
+      background: var(--color-card);
+      border: 1.5px solid var(--color-border);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .range-btn--active {
+      background: var(--color-primary-light);
+      color: var(--color-primary);
+      border-color: var(--color-primary);
+    }
+
+    /* ===== 图表容器 ===== */
+    .chart-container {
+      background: var(--color-card);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-card);
+      margin-bottom: var(--space-md);
+    }
+
+    .chart-container canvas {
+      width: 100% !important;
+      max-height: 240px;
+    }
+
+    /* ===== 情绪标签 ===== */
+    .emotion-summary {
+      background: var(--color-card);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-card);
+      margin-bottom: var(--space-md);
+    }
+
+    .emotion-summary__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-md);
+    }
+
+    .emotion-summary__title {
+      font-size: var(--font-title-sm);
+      font-weight: var(--weight-semibold);
+    }
+
+    .emotion-summary__grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: var(--space-md);
+    }
+
+    .emotion-item {
+      text-align: center;
+      padding: var(--space-md);
+      border-radius: var(--radius-btn);
+    }
+
+    .emotion-item--good {
+      background: var(--color-success-light);
+    }
+
+    .emotion-item--medium {
+      background: var(--color-warning-light);
+    }
+
+    .emotion-item--bad {
+      background: var(--color-danger-light);
+    }
+
+    .emotion-item__icon {
+      font-size: 28px;
+      margin-bottom: 4px;
+    }
+
+    .emotion-item__label {
+      font-size: var(--font-caption);
+      font-weight: var(--weight-semibold);
+    }
+
+    .emotion-item--good .emotion-item__label { color: var(--color-success); }
+    .emotion-item--medium .emotion-item__label { color: var(--color-warning); }
+    .emotion-item--bad .emotion-item__label { color: var(--color-danger); }
+
+    .emotion-item__value {
+      font-size: var(--font-caption);
+      color: var(--color-text-secondary);
+      margin-top: 2px;
+    }
+
+    /* ===== 异常标记 ===== */
+    .anomaly-list {
+      margin-top: var(--space-md);
+    }
+
+    .anomaly-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-sm);
+      padding: var(--space-sm) 0;
+      font-size: var(--font-caption);
+      color: var(--color-text-secondary);
+    }
+
+    .anomaly-item__dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+
+    .anomaly-item__dot--warning { background: var(--color-warning); }
+    .anomaly-item__dot--danger { background: var(--color-danger); }
+
+    /* ===== 步态数据 ===== */
+    .gait-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+      margin-bottom: var(--space-md);
+    }
+
+    .gait-metric {
+      background: var(--color-card);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-card);
+    }
+
+    .gait-metric__value {
+      font-size: var(--font-title-lg);
+      font-weight: var(--weight-bold);
+      color: var(--color-text);
+    }
+
+    .gait-metric__value--danger { color: var(--color-danger); }
+    .gait-metric__value--warning { color: var(--color-warning); }
+    .gait-metric__value--success { color: var(--color-success); }
+
+    .gait-metric__label {
+      font-size: var(--font-caption);
+      color: var(--color-text-secondary);
+      margin-top: 2px;
+    }
+
+    .gait-metric__trend {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: var(--space-sm);
+      font-size: var(--font-caption);
+      font-weight: var(--weight-semibold);
+    }
+
+    .gait-metric__trend--down { color: var(--color-danger); }
+    .gait-metric__trend--up { color: var(--color-success); }
+    .gait-metric__trend--stable { color: var(--color-text-secondary); }
+
+    /* ===== 风险标记 ===== */
+    .risk-markers {
+      background: var(--color-card);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-card);
+      margin-bottom: var(--space-md);
+    }
+
+    .risk-marker {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md) 0;
+      border-bottom: 1px solid var(--color-divider);
+    }
+
+    .risk-marker:last-child {
+      border-bottom: none;
+    }
+
+    .risk-marker__icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 16px;
+    }
+
+    .risk-marker__icon--high {
+      background: var(--color-danger-light);
+    }
+
+    .risk-marker__icon--medium {
+      background: var(--color-warning-light);
+    }
+
+    .risk-marker__body {
+      flex: 1;
+    }
+
+    .risk-marker__title {
+      font-size: var(--font-body);
+      font-weight: var(--weight-semibold);
+    }
+
+    .risk-marker__desc {
+      font-size: var(--font-caption);
+      color: var(--color-text-secondary);
+    }
+
+    .risk-marker__level {
+      padding: 4px 10px;
+      border-radius: var(--radius-pill);
+      font-size: 11px;
+      font-weight: var(--weight-bold);
+    }
+
+    .risk-marker__level--high {
+      background: var(--color-danger-light);
+      color: var(--color-danger);
+    }
+
+    .risk-marker__level--medium {
+      background: var(--color-warning-light);
+      color: var(--color-warning);
+    }
+
+    /* ===== AI周报 ===== */
+    .weekly-report {
+      background: var(--color-card);
+      border-radius: var(--radius-card);
+      overflow: hidden;
+      box-shadow: var(--shadow-card);
+      margin-bottom: var(--space-md);
+    }
+
+    .weekly-report__header {
+      background: linear-gradient(135deg, #2B7DE9 0%, #1E6DD1 100%);
+      color: var(--color-text-white);
+      padding: var(--space-xl) var(--space-lg);
+      text-align: center;
+    }
+
+    .weekly-report__period {
+      font-size: var(--font-caption);
+      opacity: 0.8;
+      margin-bottom: var(--space-xs);
+    }
+
+    .weekly-report__title {
+      font-size: var(--font-title);
+      font-weight: var(--weight-bold);
+    }
+
+    .weekly-report__body {
+      padding: var(--space-lg);
+    }
+
+    .weekly-report__section {
+      margin-bottom: var(--space-lg);
+    }
+
+    .weekly-report__section:last-child {
+      margin-bottom: 0;
+    }
+
+    .weekly-report__section-title {
+      font-size: var(--font-body);
+      font-weight: var(--weight-semibold);
+      color: var(--color-text);
+      margin-bottom: var(--space-sm);
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+
+    .weekly-report__section-title::before {
+      content: "";
+      width: 3px;
+      height: 16px;
+      background: var(--color-primary);
+      border-radius: 2px;
+    }
+
+    .weekly-report__text {
+      font-size: var(--font-body);
+      color: var(--color-text-secondary);
+      line-height: 1.8;
+    }
+
+    /* ===== 建议卡片 ===== */
+    .suggestion-card {
+      background: var(--color-primary-light);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-md);
+      border-left: 4px solid var(--color-primary);
+    }
+
+    .suggestion-card__title {
+      font-size: var(--font-body);
+      font-weight: var(--weight-semibold);
+      color: var(--color-primary);
+      margin-bottom: var(--space-sm);
+      display: flex;
+      align-items: center;
+      gap: var(--space-xs);
+    }
+
+    .suggestion-card__text {
+      font-size: var(--font-body);
+      color: var(--color-text);
+      line-height: 1.6;
+    }
+
+    .suggestion-card__action {
+      margin-top: var(--space-md);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 顶部导航栏 -->
+  <header class="header">
+    <h1 class="header__title">时光机</h1>
+    <div class="header__actions">
+      <button class="header__btn" title="导出报告">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+      </button>
+      <button class="header__btn header__badge" title="通知">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="page">
+
+    <!-- 子Tab切换 -->
+    <div class="sub-tabs animate-slide-up">
+      <div class="sub-tab sub-tab--active" data-tab="emotion" onclick="switchTab('emotion')">情绪画像</div>
+      <div class="sub-tab" data-tab="gait" onclick="switchTab('gait')">步态预警</div>
+      <div class="sub-tab" data-tab="weekly" onclick="switchTab('weekly')">AI周报</div>
+    </div>
+
+    <!-- ===== 情绪画像 ===== -->
+    <div class="sub-page sub-page--active" id="tab-emotion">
+
+      <!-- 情绪概览 -->
+      <div class="emotion-summary animate-slide-up">
+        <div class="emotion-summary__header">
+          <div class="emotion-summary__title">情绪状态概览</div>
+          <span class="pill pill--success">总体平稳</span>
+        </div>
+        <div class="emotion-summary__grid">
+          <div class="emotion-item emotion-item--good">
+            <div class="emotion-item__icon">😊</div>
+            <div class="emotion-item__label">心情不错</div>
+            <div class="emotion-item__value">5天</div>
+          </div>
+          <div class="emotion-item emotion-item--medium">
+            <div class="emotion-item__icon">😐</div>
+            <div class="emotion-item__label">一般平静</div>
+            <div class="emotion-item__value">1天</div>
+          </div>
+          <div class="emotion-item emotion-item--bad">
+            <div class="emotion-item__icon">😔</div>
+            <div class="emotion-item__label">情绪低落</div>
+            <div class="emotion-item__value">1天</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 情绪趋势图 -->
+      <div class="chart-container animate-slide-up">
+        <div class="flex justify-between items-center mb-md">
+          <div class="card__title" style="margin-bottom:0;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+            情绪走向趋势
+          </div>
+        </div>
+        <div class="range-selector">
+          <button class="range-btn range-btn--active" onclick="selectRange(this)">7天</button>
+          <button class="range-btn" onclick="selectRange(this)">30天</button>
+          <button class="range-btn" onclick="selectRange(this)">90天</button>
+        </div>
+        <canvas id="emotionChart"></canvas>
+      </div>
+
+      <!-- 异常标记 -->
+      <div class="card animate-slide-up">
+        <div class="card__title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          异常判定
+        </div>
+        <div class="anomaly-list">
+          <div class="anomaly-item">
+            <span class="anomaly-item__dot anomaly-item__dot--warning"></span>
+            <span>短期异常：周三叹气频率增加，可能因独处时间较长</span>
+          </div>
+          <div class="anomaly-item">
+            <span class="anomaly-item__dot anomaly-item__dot--danger"></span>
+            <span>中期异常：近两周情绪波动幅度增大，建议关注</span>
+          </div>
+          <div class="anomaly-item">
+            <span class="anomaly-item__dot anomaly-item__dot--warning"></span>
+            <span>长期趋势：整体情绪平稳，但社交活跃度呈下降趋势</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 步态预警 ===== -->
+    <div class="sub-page" id="tab-gait">
+
+      <!-- 步态指标 -->
+      <div class="gait-metrics animate-slide-up">
+        <div class="gait-metric">
+          <div class="gait-metric__value gait-metric__value--warning">0.6</div>
+          <div class="gait-metric__label">平均步速 (m/s)</div>
+          <div class="gait-metric__trend gait-metric__trend--down">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/></svg>
+            较上月下降 12%
+          </div>
+        </div>
+        <div class="gait-metric">
+          <div class="gait-metric__value gait-metric__value--danger">4.2°</div>
+          <div class="gait-metric__label">重心偏移角度</div>
+          <div class="gait-metric__trend gait-metric__trend--down">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/></svg>
+            较上月增大 8%
+          </div>
+        </div>
+      </div>
+
+      <!-- 步速变化曲线 -->
+      <div class="chart-container animate-slide-up">
+        <div class="card__title" style="margin-bottom: var(--space-md);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+          </svg>
+          步速变化趋势（近30天）
+        </div>
+        <canvas id="gaitChart"></canvas>
+      </div>
+
+      <!-- 致跌风险标记 -->
+      <div class="risk-markers animate-slide-up">
+        <div class="card__title" style="margin-bottom: var(--space-md);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-danger)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          致跌风险点
+        </div>
+
+        <div class="risk-marker">
+          <div class="risk-marker__icon risk-marker__icon--high">⚠️</div>
+          <div class="risk-marker__body">
+            <div class="risk-marker__title">重心偏移超标</div>
+            <div class="risk-marker__desc">近7天重心偏移角度持续超过4°，跌倒风险显著增加</div>
+          </div>
+          <span class="risk-marker__level risk-marker__level--high">高风险</span>
+        </div>
+
+        <div class="risk-marker">
+          <div class="risk-marker__icon risk-marker__icon--medium">⚡</div>
+          <div class="risk-marker__body">
+            <div class="risk-marker__title">步速持续下降</div>
+            <div class="risk-marker__desc">步速连续3周下降，可能存在下肢肌力减退</div>
+          </div>
+          <span class="risk-marker__level risk-marker__level--medium">中风险</span>
+        </div>
+
+        <div class="risk-marker">
+          <div class="risk-marker__icon risk-marker__icon--medium">🔄</div>
+          <div class="risk-marker__body">
+            <div class="risk-marker__title">转身稳定性下降</div>
+            <div class="risk-marker__desc">近期转身动作晃动幅度增大，需关注平衡能力</div>
+          </div>
+          <span class="risk-marker__level risk-marker__level--medium">中风险</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== AI陪伴周报 ===== -->
+    <div class="sub-page" id="tab-weekly">
+
+      <div class="weekly-report animate-slide-up">
+        <div class="weekly-report__header">
+          <div class="weekly-report__period">2026年5月19日 - 5月25日</div>
+          <div class="weekly-report__title">AI 陪伴周报</div>
+        </div>
+        <div class="weekly-report__body">
+
+          <div class="weekly-report__section">
+            <div class="weekly-report__section-title">本周总结</div>
+            <div class="weekly-report__text">
+              父亲本周整体状态平稳，坚持了5天晨练，饮食规律。周三和周五有些许叹气，可能因午后独处时间较长感到寂寞。步速较上周略有下降，但仍在安全范围内。本周未发生跌倒事件，防骗系统成功拦截1次疑似诈骗电话。
+            </div>
+          </div>
+
+          <div class="weekly-report__section">
+            <div class="weekly-report__section-title">健康数据</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+              <div style="text-align:center;padding:12px;background:var(--color-success-light);border-radius:8px;">
+                <div style="font-size:20px;font-weight:700;color:var(--color-success);">5/7</div>
+                <div style="font-size:12px;color:var(--color-text-secondary);">坚持晨练</div>
+              </div>
+              <div style="text-align:center;padding:12px;background:var(--color-success-light);border-radius:8px;">
+                <div style="font-size:20px;font-weight:700;color:var(--color-success);">7/7</div>
+                <div style="font-size:12px;color:var(--color-text-secondary);">按时服药</div>
+              </div>
+              <div style="text-align:center;padding:12px;background:var(--color-warning-light);border-radius:8px;">
+                <div style="font-size:20px;font-weight:700;color:var(--color-warning);">0.6</div>
+                <div style="font-size:12px;color:var(--color-text-secondary);">平均步速m/s</div>
+              </div>
+              <div style="text-align:center;padding:12px;background:var(--color-info-light);border-radius:8px;">
+                <div style="font-size:20px;font-weight:700;color:var(--color-info);">7.2h</div>
+                <div style="font-size:12px;color:var(--color-text-secondary);">日均睡眠</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="weekly-report__section">
+            <div class="weekly-report__section-title">温馨建议</div>
+            <div class="weekly-report__text">
+              本周老人叹气较多，建议周六打个长电话，聊聊家常。周三下午老人独处时间较长，可以考虑安排邻居或社区志愿者上门探访。步速下降趋势需持续关注，建议下周一联系村医做一次简单体检。
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 建议卡片 -->
+      <div class="suggestion-card animate-slide-up">
+        <div class="suggestion-card__title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" width="16" height="16" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72"/>
+          </svg>
+          本周行动建议
+        </div>
+        <div class="suggestion-card__text">
+          建议周六下午3点给父亲打个长电话，聊聊近况。可以提前准备一些他感兴趣的话题，比如老家的变化、邻居的近况等。
+        </div>
+        <div class="suggestion-card__action">
+          <button class="btn btn--primary" style="padding:8px 20px;font-size:13px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+            </svg>
+            立即拨打电话
+          </button>
+        </div>
+      </div>
+
+      <div class="suggestion-card animate-slide-up" style="background:var(--color-warning-light);border-left-color:var(--color-warning);">
+        <div class="suggestion-card__title" style="color:var(--color-warning);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-warning)" stroke-width="2" width="16" height="16" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          健康提醒
+        </div>
+        <div class="suggestion-card__text">
+          父亲步速持续下降，建议下周一联系李医生安排一次体检，重点关注下肢肌力和平衡能力评估。
+        </div>
+        <div class="suggestion-card__action">
+          <button class="btn btn--warning" style="padding:8px 20px;font-size:13px;">
+            联系村医预约
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- 底部Tab导航 -->
+  <nav class="tab-bar">
+    <a href="index.html" class="tab-bar__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+      <span class="tab-bar__label">守护全景</span>
+    </a>
+    <a href="emergency.html" class="tab-bar__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <span class="tab-bar__label">紧急干预</span>
+    </a>
+    <a href="timemachine.html" class="tab-bar__item tab-bar__item--active">
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14" stroke="white" stroke-width="2" fill="none"/>
+      </svg>
+      <span class="tab-bar__label">时光机</span>
+    </a>
+  </nav>
+
+  <script src="js/main.js"></script>
+  <script>
+    // ===== 子Tab切换 =====
+    function switchTab(tabName) {
+      // 更新Tab样式
+      document.querySelectorAll('.sub-tab').forEach(tab => {
+        tab.classList.toggle('sub-tab--active', tab.dataset.tab === tabName);
+      });
+      // 更新子页面显示
+      document.querySelectorAll('.sub-page').forEach(page => {
+        page.classList.toggle('sub-page--active', page.id === 'tab-' + tabName);
+      });
+      // 延迟初始化图表（确保canvas可见）
+      if (tabName === 'emotion' && !window.emotionChartInit) {
+        initEmotionChart();
+      }
+      if (tabName === 'gait' && !window.gaitChartInit) {
+        initGaitChart();
+      }
+    }
+
+    // ===== 时间范围选择 =====
+    function selectRange(btn) {
+      document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('range-btn--active'));
+      btn.classList.add('range-btn--active');
+    }
+
+    // ===== 情绪趋势图 =====
+    function initEmotionChart() {
+      const ctx = document.getElementById('emotionChart');
+      if (!ctx) return;
+      window.emotionChartInit = true;
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+          datasets: [{
+            label: '情绪指数',
+            data: [75, 80, 55, 72, 58, 82, 78],
+            borderColor: '#2B7DE9',
+            backgroundColor: 'rgba(43, 125, 233, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 7,
+            pointBackgroundColor: function(context) {
+              const value = context.raw;
+              if (value < 60) return '#E53935';
+              if (value < 70) return '#FF9800';
+              return '#43A047';
+            },
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const value = context.raw;
+                  let status = '心情不错';
+                  if (value < 60) status = '情绪低落';
+                  else if (value < 70) status = '一般平静';
+                  return '情绪指数: ' + value + ' (' + status + ')';
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              min: 0,
+              max: 100,
+              ticks: {
+                stepSize: 25,
+                font: { size: 11 }
+              },
+              grid: { color: '#F0F0F0' }
+            },
+            x: {
+              ticks: { font: { size: 11 } },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    // ===== 步速变化图 =====
+    function initGaitChart() {
+      const ctx = document.getElementById('gaitChart');
+      if (!ctx) return;
+      window.gaitChartInit = true;
+
+      const labels = [];
+      const data = [];
+      const pointColors = [];
+      for (let i = 30; i >= 1; i--) {
+        labels.push(i + '天前');
+        const val = 0.75 - (30 - i) * 0.005 + (Math.random() - 0.5) * 0.08;
+        data.push(parseFloat(val.toFixed(2)));
+        pointColors.push(val < 0.6 ? '#E53935' : val < 0.65 ? '#FF9800' : '#43A047');
+      }
+
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: '步速 (m/s)',
+            data: data,
+            borderColor: '#2B7DE9',
+            backgroundColor: 'rgba(43, 125, 233, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2,
+            pointHoverRadius: 5,
+            pointBackgroundColor: pointColors
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            annotation: undefined
+          },
+          scales: {
+            y: {
+              min: 0.4,
+              max: 1.0,
+              ticks: {
+                stepSize: 0.1,
+                font: { size: 11 }
+              },
+              grid: { color: '#F0F0F0' }
+            },
+            x: {
+              ticks: {
+                font: { size: 10 },
+                maxTicksLimit: 8
+              },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    // 页面加载后初始化默认Tab的图表
+    document.addEventListener('DOMContentLoaded', function() {
+      initEmotionChart();
+    });
+  </script>
+</body>
+</html>

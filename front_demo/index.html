@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>守护全景 - EdgeFallSys</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* ===== 状态胶囊 ===== */
+    .status-capsule {
+      background: linear-gradient(135deg, #2B7DE9 0%, #1E6DD1 100%);
+      border-radius: var(--radius-card);
+      padding: var(--space-xl);
+      color: var(--color-text-white);
+      margin-bottom: var(--space-md);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .status-capsule::after {
+      content: "";
+      position: absolute;
+      top: -30%;
+      right: -10%;
+      width: 160px;
+      height: 160px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 50%;
+    }
+
+    .status-capsule__header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      margin-bottom: var(--space-lg);
+    }
+
+    .status-capsule__avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: var(--weight-bold);
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .status-capsule__avatar .status-dot {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      width: 12px;
+      height: 12px;
+      border: 2px solid #2B7DE9;
+    }
+
+    .status-capsule__name {
+      font-size: var(--font-title);
+      font-weight: var(--weight-bold);
+    }
+
+    .status-capsule__relation {
+      font-size: var(--font-caption);
+      opacity: 0.8;
+    }
+
+    .status-capsule__grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: var(--space-md);
+    }
+
+    .status-capsule__item {
+      text-align: center;
+    }
+
+    .status-capsule__value {
+      font-size: var(--font-hero);
+      font-weight: var(--weight-bold);
+      line-height: 1.2;
+    }
+
+    .status-capsule__label {
+      font-size: var(--font-caption);
+      opacity: 0.8;
+      margin-top: 2px;
+    }
+
+    /* ===== 环境看板 ===== */
+    .env-board {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-md);
+      margin-bottom: var(--space-md);
+    }
+
+    .env-card {
+      background: var(--color-card);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-card);
+    }
+
+    .env-card__icon {
+      font-size: 28px;
+      margin-bottom: var(--space-sm);
+    }
+
+    .env-card__value {
+      font-size: var(--font-title-lg);
+      font-weight: var(--weight-bold);
+      color: var(--color-text);
+    }
+
+    .env-card__label {
+      font-size: var(--font-caption);
+      color: var(--color-text-secondary);
+      margin-top: 2px;
+    }
+
+    .env-card__detail {
+      font-size: var(--font-caption);
+      color: var(--color-text-secondary);
+      margin-top: var(--space-sm);
+    }
+
+    /* ===== 动态时间轴 ===== */
+    .timeline {
+      position: relative;
+      padding-left: 24px;
+    }
+
+    .timeline::before {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 8px;
+      bottom: 8px;
+      width: 2px;
+      background: var(--color-border);
+    }
+
+    .timeline__item {
+      position: relative;
+      padding-bottom: var(--space-lg);
+      animation: slideUp 0.4s ease-out;
+    }
+
+    .timeline__item:last-child {
+      padding-bottom: 0;
+    }
+
+    .timeline__dot {
+      position: absolute;
+      left: -20px;
+      top: 6px;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid var(--color-primary);
+      background: var(--color-card);
+      z-index: 1;
+    }
+
+    .timeline__dot--active {
+      background: var(--color-primary);
+    }
+
+    .timeline__dot--warning {
+      border-color: var(--color-warning);
+    }
+
+    .timeline__dot--danger {
+      border-color: var(--color-danger);
+    }
+
+    .timeline__time {
+      font-size: var(--font-caption);
+      color: var(--color-text-secondary);
+      margin-bottom: 4px;
+    }
+
+    .timeline__content {
+      background: var(--color-card);
+      border-radius: var(--radius-card);
+      padding: var(--space-md) var(--space-lg);
+      box-shadow: var(--shadow-card);
+    }
+
+    .timeline__event {
+      font-size: var(--font-body);
+      font-weight: var(--weight-semibold);
+      color: var(--color-text);
+      margin-bottom: 4px;
+    }
+
+    .timeline__desc {
+      font-size: var(--font-caption);
+      color: var(--color-text-secondary);
+      line-height: 1.5;
+    }
+
+    .timeline__tags {
+      display: flex;
+      gap: var(--space-xs);
+      margin-top: var(--space-sm);
+      flex-wrap: wrap;
+    }
+
+    /* ===== 离家模式提示 ===== */
+    .outdoor-mode {
+      display: none;
+      background: var(--color-info-light);
+      border-radius: var(--radius-card);
+      padding: var(--space-lg);
+      margin-bottom: var(--space-md);
+      align-items: center;
+      gap: var(--space-md);
+    }
+
+    .outdoor-mode.active {
+      display: flex;
+    }
+
+    .outdoor-mode__icon {
+      width: 40px;
+      height: 40px;
+      background: var(--color-info);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .outdoor-mode__icon svg {
+      width: 20px;
+      height: 20px;
+      color: white;
+    }
+
+    .outdoor-mode__text {
+      flex: 1;
+    }
+
+    .outdoor-mode__title {
+      font-size: var(--font-body);
+      font-weight: var(--weight-semibold);
+      color: #1565C0;
+    }
+
+    .outdoor-mode__desc {
+      font-size: var(--font-caption);
+      color: var(--color-text-secondary);
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 顶部导航栏 -->
+  <header class="header">
+    <h1 class="header__title">守护全景</h1>
+    <div class="header__actions">
+      <button class="header__btn" title="切换家庭成员">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </button>
+      <button class="header__btn header__badge" title="通知">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="page">
+
+    <!-- 状态胶囊 -->
+    <section class="status-capsule animate-slide-up">
+      <div class="status-capsule__header">
+        <div class="status-capsule__avatar">
+          父
+          <span class="status-dot status-dot--online"></span>
+        </div>
+        <div>
+          <div class="status-capsule__name">父亲</div>
+          <div class="status-capsule__relation">已佩戴手环 · 在线</div>
+        </div>
+      </div>
+      <div class="status-capsule__grid">
+        <div class="status-capsule__item">
+          <div class="status-capsule__value">已佩戴</div>
+          <div class="status-capsule__label">手环状态</div>
+        </div>
+        <div class="status-capsule__item">
+          <div class="status-capsule__value">客厅</div>
+          <div class="status-capsule__label">室内位置</div>
+        </div>
+        <div class="status-capsule__item">
+          <div class="status-capsule__value">82</div>
+          <div class="status-capsule__label">活跃度</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 恶劣天气提醒 -->
+    <div class="alert-banner alert-banner--warning animate-slide-up">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <span>今日暴雨，建议提醒父亲减少外出</span>
+    </div>
+
+    <!-- 离家模式（默认隐藏，断连时激活） -->
+    <div class="outdoor-mode" id="outdoorMode">
+      <div class="outdoor-mode__icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="3 11 22 2 13 21 11 13 3 11"/>
+        </svg>
+      </div>
+      <div class="outdoor-mode__text">
+        <div class="outdoor-mode__title">离家模式已开启</div>
+        <div class="outdoor-mode__desc">手环与网关断连，已切换至户外定位追踪</div>
+      </div>
+      <button class="btn btn--outline" style="border-color:#1565C0;color:#1565C0;padding:6px 12px;font-size:12px;">查看轨迹</button>
+    </div>
+
+    <!-- 环境看板 -->
+    <section class="env-board animate-slide-up">
+      <div class="env-card">
+        <div class="env-card__icon">🌧️</div>
+        <div class="env-card__value">22°C</div>
+        <div class="env-card__label">室外天气 · 暴雨</div>
+        <div class="env-card__detail">湿度 89% · 东南风3级</div>
+      </div>
+      <div class="env-card">
+        <div class="env-card__icon">🏠</div>
+        <div class="env-card__value">24°C</div>
+        <div class="env-card__label">室内环境</div>
+        <div class="env-card__detail">湿度 55% · 空气优</div>
+      </div>
+    </section>
+
+    <!-- 动态时间轴 -->
+    <section class="card animate-slide-up">
+      <div class="card__title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--color-primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+        今日动态
+      </div>
+
+      <div class="timeline">
+        <div class="timeline__item">
+          <div class="timeline__dot timeline__dot--active"></div>
+          <div class="timeline__time">14:30</div>
+          <div class="timeline__content">
+            <div class="timeline__event">正在看电视</div>
+            <div class="timeline__desc">父亲在客厅安静观看新闻节目，状态平稳</div>
+            <div class="timeline__tags">
+              <span class="pill pill--success">心情不错</span>
+              <span class="pill pill--info">久坐提醒</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline__item">
+          <div class="timeline__dot"></div>
+          <div class="timeline__time">12:00</div>
+          <div class="timeline__content">
+            <div class="timeline__event">正常午餐</div>
+            <div class="timeline__desc">午餐进食规律，饭量适中，餐后在厨房活动</div>
+            <div class="timeline__tags">
+              <span class="pill pill--success">饮食正常</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline__item">
+          <div class="timeline__dot"></div>
+          <div class="timeline__time">10:15</div>
+          <div class="timeline__content">
+            <div class="timeline__event">服药提醒已确认</div>
+            <div class="timeline__desc">降压药按时服用，手环检测到取药动作</div>
+            <div class="timeline__tags">
+              <span class="pill pill--primary">按时服药</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline__item">
+          <div class="timeline__dot timeline__dot--warning"></div>
+          <div class="timeline__time">08:30</div>
+          <div class="timeline__content">
+            <div class="timeline__event">开始晨练</div>
+            <div class="timeline__desc">在小区花园散步30分钟，步速较昨日略慢</div>
+            <div class="timeline__tags">
+              <span class="pill pill--warning">步速偏慢</span>
+              <span class="pill pill--success">坚持锻炼</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="timeline__item">
+          <div class="timeline__dot"></div>
+          <div class="timeline__time">06:40</div>
+          <div class="timeline__content">
+            <div class="timeline__event">起床</div>
+            <div class="timeline__desc">今日起床时间正常，夜间睡眠质量良好</div>
+            <div class="timeline__tags">
+              <span class="pill pill--success">睡眠良好</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 底部Tab导航 -->
+  <nav class="tab-bar">
+    <a href="index.html" class="tab-bar__item tab-bar__item--active">
+      <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2L2 12h3v8h6v-6h2v6h6v-8h3L12 2z"/>
+      </svg>
+      <span class="tab-bar__label">守护全景</span>
+    </a>
+    <a href="emergency.html" class="tab-bar__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <span class="tab-bar__label">紧急干预</span>
+    </a>
+    <a href="timemachine.html" class="tab-bar__item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/>
+        <polyline points="12 6 12 12 16 14"/>
+      </svg>
+      <span class="tab-bar__label">时光机</span>
+    </a>
+  </nav>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
